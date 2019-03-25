@@ -22,7 +22,7 @@ impl <'lhs, 'rhs> ZipRange<'lhs, 'rhs> {
     }
 
     #[inline(always)]
-    pub fn into_ranges(self) -> (Range<'lhs>, Range<'rhs>) {
+    pub const fn into_ranges(self) -> (Range<'lhs>, Range<'rhs>) {
         unsafe {
             (
                 Range::from(self.start, self.end),

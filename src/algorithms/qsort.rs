@@ -1,17 +1,24 @@
 use crate::{
-    container::container::{Container, scope},
-    fundemental::{range::Range, proof::NonEmpty, index::Index},
+    container::container::{scope, Container},
+    fundemental::{index::Index, proof::NonEmpty, range::Range},
 };
 
 pub fn qsort<T: Ord>(slice: &mut [T]) {
     scope(slice, |mut v| {
-        if let Some(range) = v.range().nonempty() {
-            quicksort(&mut v, range);
+        let range = v.range();
+
+        if range.len() > 1 {
+            // we already know it is non-empty, so call the faster way.
+            let range = unsafe { range.nonempty_unchecked() };
+            let p = partition(&mut v, range);
+
+            qsort(&mut v[..p]);
+            qsort(&mut v[p..]);
         }
     })
 }
 
-fn quicksort<'id, T: Ord>(v: &mut Container<'id, &mut [T]>, range: Range<'id, NonEmpty>) {
+fn _quicksort<'id, T: Ord>(v: &mut Container<'id, &mut [T]>, range: Range<'id, NonEmpty>) {
     // There is nothing to sort if the range has a lenght of 1.
     // A range with length of 0 is *impossible* to get here (well, kinda..),
     if range.len() > 1 {
@@ -22,8 +29,8 @@ fn quicksort<'id, T: Ord>(v: &mut Container<'id, &mut [T]>, range: Range<'id, No
         // We must convert `lhs` back into a non-empty range,
         // which should be okey,
         // because if we splitted at idx 0, the recursive call doesn't access the range.
-        quicksort(v, unsafe { lhs.nonempty_unchecked() });
-        quicksort(v, rhs);
+        _quicksort(v, unsafe { lhs.nonempty_unchecked() });
+        _quicksort(v, rhs);
     }
 }
 
@@ -64,7 +71,6 @@ fn partition<'id, T: Ord>(
     debug_assert!(range.first() <= range.last());
     range.first()
 }
-
 
 #[cfg(test)]
 mod tests {

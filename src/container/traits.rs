@@ -1,9 +1,15 @@
-pub trait ContainerTrait {
+/// The most basic container.
+/// The container hold elements of type `Item`.
+///
+/// This container can have indices and ranges that are in bounds.
+pub unsafe trait ContainerTrait {
     type Item;
+
+    /// Returns the length of the container.
     fn base_len(&self) -> usize;
 }
 
-impl<'a, C: ?Sized + ContainerTrait> ContainerTrait for &'a C {
+unsafe impl<'a, C: ?Sized + ContainerTrait> ContainerTrait for &'a C {
     type Item = C::Item;
 
     #[inline(always)]
@@ -12,7 +18,7 @@ impl<'a, C: ?Sized + ContainerTrait> ContainerTrait for &'a C {
     }
 }
 
-impl<'a, C: ?Sized + ContainerTrait> ContainerTrait for &'a mut C {
+unsafe impl<'a, C: ?Sized + ContainerTrait> ContainerTrait for &'a mut C {
     type Item = C::Item;
 
     #[inline(always)]
@@ -21,13 +27,13 @@ impl<'a, C: ?Sized + ContainerTrait> ContainerTrait for &'a mut C {
     }
 }
 
-pub trait Contiguous: ContainerTrait {
+pub unsafe trait Contiguous: ContainerTrait {
     fn begin(&self) -> *const Self::Item;
     fn end(&self) -> *const Self::Item;
     fn as_slice(&self) -> &[Self::Item];
 }
 
-impl<'a, C: ?Sized + Contiguous> Contiguous for &'a C {
+unsafe impl<'a, C: ?Sized + Contiguous> Contiguous for &'a C {
     #[inline(always)]
     fn begin(&self) -> *const Self::Item {
         (**self).begin()
@@ -44,7 +50,7 @@ impl<'a, C: ?Sized + Contiguous> Contiguous for &'a C {
     }
 }
 
-impl<'a, C: ?Sized + Contiguous> Contiguous for &'a mut C {
+unsafe impl<'a, C: ?Sized + Contiguous> Contiguous for &'a mut C {
     #[inline(always)]
     fn begin(&self) -> *const Self::Item {
         (**self).begin()
@@ -61,7 +67,7 @@ impl<'a, C: ?Sized + Contiguous> Contiguous for &'a mut C {
     }
 }
 
-pub trait ContiguousMut: Contiguous {
+pub unsafe trait ContiguousMut: Contiguous {
     #[inline(always)]
     fn begin_mut(&mut self) -> *mut Self::Item {
         self.begin() as *mut _
@@ -75,45 +81,45 @@ pub trait ContiguousMut: Contiguous {
     fn as_mut_slice(&mut self) -> &mut [Self::Item];
 }
 
-impl<'a, C: ?Sized + ContiguousMut> ContiguousMut for &'a mut C {
+unsafe impl<'a, C: ?Sized + ContiguousMut> ContiguousMut for &'a mut C {
     #[inline(always)]
     fn as_mut_slice(&mut self) -> &mut [Self::Item] {
         (**self).as_mut_slice()
     }
 }
 
-pub trait GetUnchecked: ContainerTrait {
+pub unsafe trait GetUnchecked: ContainerTrait {
     #[inline(always)]
     unsafe fn unchecked(&self, index: usize) -> &Self::Item;
 }
 
-impl<'a, C: ?Sized + GetUnchecked> GetUnchecked for &'a C {
+unsafe impl<'a, C: ?Sized + GetUnchecked> GetUnchecked for &'a C {
     #[inline(always)]
     unsafe fn unchecked(&self, index: usize) -> &Self::Item {
         (**self).unchecked(index)
     }
 }
 
-impl<'a, C: ?Sized + GetUnchecked> GetUnchecked for &'a mut C {
+unsafe impl<'a, C: ?Sized + GetUnchecked> GetUnchecked for &'a mut C {
     #[inline(always)]
     unsafe fn unchecked(&self, index: usize) -> &Self::Item {
         (**self).unchecked(index)
     }
 }
 
-pub trait GetUncheckedMut: GetUnchecked {
+pub unsafe trait GetUncheckedMut: GetUnchecked {
     #[inline(always)]
     unsafe fn unchecked_mut(&mut self, index: usize) -> &mut Self::Item;
 }
 
-impl<'a, C: ?Sized + GetUncheckedMut> GetUncheckedMut for &'a mut C {
+unsafe impl<'a, C: ?Sized + GetUncheckedMut> GetUncheckedMut for &'a mut C {
     #[inline(always)]
     unsafe fn unchecked_mut(&mut self, index: usize) -> &mut Self::Item {
         (**self).unchecked_mut(index)
     }
 }
 
-impl<T> ContainerTrait for [T] {
+unsafe impl<T> ContainerTrait for [T] {
     type Item = T;
 
     #[inline(always)]
@@ -122,7 +128,7 @@ impl<T> ContainerTrait for [T] {
     }
 }
 
-impl<T> Contiguous for [T] {
+unsafe impl<T> Contiguous for [T] {
     #[inline(always)]
     fn begin(&self) -> *const Self::Item {
         self.as_ptr()
@@ -139,21 +145,21 @@ impl<T> Contiguous for [T] {
     }
 }
 
-impl<T> ContiguousMut for [T] {
+unsafe impl<T> ContiguousMut for [T] {
     #[inline(always)]
     fn as_mut_slice(&mut self) -> &mut [Self::Item] {
         self
     }
 }
 
-impl<T> GetUnchecked for [T] {
+unsafe impl<T> GetUnchecked for [T] {
     #[inline(always)]
     unsafe fn unchecked(&self, index: usize) -> &Self::Item {
         self.get_unchecked(index)
     }
 }
 
-impl<T> GetUncheckedMut for [T] {
+unsafe impl<T> GetUncheckedMut for [T] {
     #[inline(always)]
     unsafe fn unchecked_mut(&mut self, index: usize) -> &mut Self::Item {
         self.get_unchecked_mut(index)

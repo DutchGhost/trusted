@@ -1,7 +1,11 @@
 use super::traits::*;
+use super::ziprange::ZipRange;
 use crate::fundemental::proof::*;
 use crate::fundemental::{id::Id, index::Index, range::Range};
 
+/// A container is a datastructure wrapped over `C`.
+/// `C` is structure consisting of contiguous memory,
+/// like a slice or vector.
 pub struct Container<'id, C> {
     _id: Id<'id>,
     container: C,
@@ -11,16 +15,32 @@ impl<'id, C, T> Container<'id, C>
 where
     C: ContainerTrait<Item = T>,
 {
+    /// Returns the length of the container.
     #[inline(always)]
     pub fn len(&self) -> usize {
         self.container.base_len()
     }
 
+    /// Returns a range into the container.
     #[inline(always)]
     pub fn range(&self) -> Range<'id> {
         unsafe { Range::from(0, self.len()) }
     }
 
+    /// Zips the range's of `self` and `other`.
+    /// The returning range will be the shortest of the two.
+    #[inline(always)]
+    pub fn zipped<'other, Q>(&self, other: &Container<'other, Q>) -> ZipRange<'id, 'other>
+    where
+        Q: ContainerTrait
+    {
+        let len = if self.len() < other.len() { self.len() } else { other.len() };
+
+        unsafe { ZipRange::new(0, len) }
+    }
+
+    /// Split's the container at `index`, returning 2 ranges into the container.
+    /// Proof of length `P` is transferred to the latter range.
     #[inline(always)]
     pub fn split_at<P>(&self, index: Index<'id, P>) -> (Range<'id>, Range<'id, P>) {
         unsafe {
@@ -31,6 +51,7 @@ where
         }
     }
 
+    /// Swaps element at index `a` with element at index `b`.
     #[inline(always)]
     pub fn swap(&mut self, a: Index<'id>, b: Index<'id>)
     where
@@ -47,6 +68,10 @@ where
         }
     }
 
+    /// Scans the container backwards from `index`,
+    /// continue's scanning as long as the closure returns true.
+    ///
+    /// Returns a range of the scanned indices, including `index`.
     #[inline]
     pub fn scan_from_rev<'b, F>(&'b self, index: Index<'id>, mut f: F) -> Range<'id, NonEmpty>
     where

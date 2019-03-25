@@ -4,8 +4,16 @@ use super::{
     proof::{NonEmpty, ProofAdd, Unknown},
 };
 
-use std::marker::PhantomData;
+use std::{
+    hash::{Hash, Hasher},
+    marker::PhantomData,
+};
 
+/// A range is a range into a container.
+/// The range has an extra `Proof` parameter,
+/// which indicates whether the range is know to be non-empty (NonEmpty),
+/// or not (Unknown).
+/// A NonEmpty range has a length of 1 or more.
 #[derive(Debug)]
 pub struct Range<'id, Proof = Unknown> {
     _id: Id<'id>,
@@ -70,7 +78,23 @@ impl<'id, P> Clone for Range<'id, P> {
     }
 }
 
+impl<'id, P, Q> PartialEq<Range<'id, Q>> for Range<'id, P> {
+    fn eq(&self, other: &Range<'id, Q>) -> bool {
+        self.start == other.start && self.end == other.end
+    }
+}
+
+impl<'id, P> Eq for Range<'id, P> {}
+
+impl<'id, P> Hash for Range<'id, P> {
+    fn hash<H: Hasher>(&self, h: &mut H) {
+        self.start.hash(h);
+        self.end.hash(h);
+    }
+}
+
 impl<'id, P> Range<'id, P> {
+    /// Attemts to create a NonEmpty range, returning Some on success, None on failure.
     #[inline]
     pub fn nonempty(&self) -> Option<Range<'id, NonEmpty>> {
         if !self.is_empty() {
@@ -79,6 +103,7 @@ impl<'id, P> Range<'id, P> {
             None
         }
     }
+
     /// Returns the length of the range.
     #[inline]
     pub const fn len(&self) -> usize {
@@ -113,6 +138,7 @@ impl<'id, P> Range<'id, P> {
         unsafe { (Range::from(self.start, mid), Range::from_any(mid, self.end)) }
     }
 
+    /// Split the range at `index`. if past the end, return false and clamp to the end.
     #[inline]
     pub fn split_at(&self, index: usize) -> (Range<'id>, Range<'id>, bool) {
         let mid = if index > self.len() {
@@ -130,6 +156,7 @@ impl<'id, P> Range<'id, P> {
         }
     }
 
+    /// Returns Some if `index` is contained within the range.
     #[inline]
     pub fn contains(&self, index: usize) -> Option<Index<'id, P>> {
         unsafe {
@@ -141,17 +168,18 @@ impl<'id, P> Range<'id, P> {
         }
     }
 
+    /// Join together two adjacent ranges (they must be exactly touching, and
+    /// in left to right order).
     #[inline]
     pub const fn join<Q>(
         &self,
         other: Range<'id, Q>,
-    ) -> Result<Range<'id, <(P, Q) as ProofAdd>::Sum>, ()>
+    ) -> Option<Range<'id, <(P, Q) as ProofAdd>::Sum>>
     where
         (P, Q): ProofAdd,
     {
         unsafe {
-            [Ok(Range::from_any(self.start, other.end)), Err(())]
-                [(self.end != other.start) as usize]
+            [Some(Range::from_any(self.start, other.end)), None][(self.end != other.start) as usize]
         }
         // if self.end == other.start {
         //     unsafe {
@@ -164,15 +192,23 @@ impl<'id, P> Range<'id, P> {
 }
 
 impl<'id, P> Range<'id, P> {
+    /// Creates an unchecked NonEmpty range.
+    /// # Unsafe
+    /// This function is marked unsafe,
+    /// because it's not checked whether the range is truely NonEmpty.
     #[inline]
     pub const unsafe fn nonempty_unchecked(&self) -> Range<'id, NonEmpty> {
         Range::from_any(self.start, self.end)
     }
 
+    /// Returns the first Index of the range.
+    #[inline]
     pub const fn first(&self) -> Index<'id, P> {
         unsafe { Index::new(self.start) }
     }
 
+    /// Returns the middle Index of the range.
+    #[inline]
     pub const fn upper_middle(&self) -> Index<'id, P> {
         let mid = self.len() / 2 + self.start;
 
@@ -192,6 +228,11 @@ impl<'id, P> Range<'id, P> {
 }
 
 impl<'id> Range<'id, NonEmpty> {
+    /// Splits the range at `index`.
+    /// # Unsafe
+    /// This function is marked unsafe,
+    /// because `index` could be the first, or last index of the range,
+    /// therefore breaking the NonEmpty variant.
     #[inline]
     pub const unsafe fn unsafe_split_index(
         &self,
@@ -203,14 +244,29 @@ impl<'id> Range<'id, NonEmpty> {
         )
     }
 
+    /// Returns the last Index of the range.
+    #[inline]
     pub const fn last(&self) -> Index<'id> {
         unsafe { Index::new(self.end - 1) }
     }
 
+    /// Returns a new range,
+    /// containing indices from *this* range's second index to *this* range's end index.
+    #[inline]
     pub const fn tail(self) -> Range<'id> {
         unsafe { Range::from(self.start + 1, self.end) }
     }
 
+    /// Returns a new range,
+    /// containing indices from *this* range's first index, to *this* range's second last index.
+    #[inline]
+    pub const fn head(self) -> Range<'id> {
+        unsafe { Range::from(self.start, self.end - 1) }
+    }
+
+    /// Advance's the range backwards.
+    /// Returns true if start < end after advancing.
+    #[inline]
     pub fn advance_back(&mut self) -> bool {
         let mut next = *self;
         next.end -= 1;
@@ -222,6 +278,9 @@ impl<'id> Range<'id, NonEmpty> {
         }
     }
 
+    /// Advance's the range forwards.
+    /// Returns true if start < end after advancing.
+    #[inline]
     pub fn advance(&mut self) -> bool {
         let mut next = *self;
         next.start += 1;
@@ -249,6 +308,7 @@ impl<'id, P> IntoIterator for Range<'id, P> {
     }
 }
 
+/// An Iterator between the range `start..end`.
 pub struct RangeIter<'id> {
     _id: Id<'id>,
     start: usize,

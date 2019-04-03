@@ -1,6 +1,4 @@
-use crate::{
-    container::container::{scope},
-};
+use crate::container::container::scope;
 
 pub fn copy<T: Copy>(src: &[T], dst: &mut [T]) {
     scope(src, |src| {
@@ -8,7 +6,7 @@ pub fn copy<T: Copy>(src: &[T], dst: &mut [T]) {
             for (src_idx, dst_idx) in src.zipped(&dst) {
                 dst[dst_idx] = src[src_idx];
                 // dst[src_idx] = src[dst_idx]; <-- fails to compile, the indices are swapped, and dont belong to the container!!
-            } 
+            }
         })
     })
 }

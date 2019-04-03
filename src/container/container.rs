@@ -32,9 +32,11 @@ where
     #[inline(always)]
     pub fn zipped<'other, Q>(&self, other: &Container<'other, Q>) -> ZipRange<'id, 'other>
     where
-        Q: ContainerTrait
+        Q: ContainerTrait,
     {
-        let len = if self.len() < other.len() { self.len() } else { other.len() };
+        use std::cmp::min;
+
+        let len = min(self.len(), other.len());
 
         unsafe { ZipRange::new(0, len) }
     }

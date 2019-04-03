@@ -165,3 +165,50 @@ unsafe impl<T> GetUncheckedMut for [T] {
         self.get_unchecked_mut(index)
     }
 }
+
+unsafe impl<T> ContainerTrait for Vec<T> {
+    type Item = T;
+
+    #[inline(always)]
+    fn base_len(&self) -> usize {
+        self.len()
+    }
+}
+
+unsafe impl<T> Contiguous for Vec<T> {
+    #[inline(always)]
+    fn begin(&self) -> *const Self::Item {
+        self.as_ptr()
+    }
+
+    #[inline(always)]
+    fn end(&self) -> *const Self::Item {
+        unsafe { self.begin().offset(self.len() as isize) }
+    }
+
+    #[inline(always)]
+    fn as_slice(&self) -> &[Self::Item] {
+        self
+    }
+}
+
+unsafe impl<T> ContiguousMut for Vec<T> {
+    #[inline(always)]
+    fn as_mut_slice(&mut self) -> &mut [Self::Item] {
+        self
+    }
+}
+
+unsafe impl<T> GetUnchecked for Vec<T> {
+    #[inline(always)]
+    unsafe fn unchecked(&self, index: usize) -> &Self::Item {
+        self.get_unchecked(index)
+    }
+}
+
+unsafe impl<T> GetUncheckedMut for Vec<T> {
+    #[inline(always)]
+    unsafe fn unchecked_mut(&mut self, index: usize) -> &mut Self::Item {
+        self.get_unchecked_mut(index)
+    }
+}

@@ -309,6 +309,7 @@ impl<'id, P> IntoIterator for Range<'id, P> {
 }
 
 /// An Iterator between the range `start..end`.
+#[derive(Copy, Clone)]
 pub struct RangeIter<'id> {
     _id: Id<'id>,
     start: usize,
